@@ -3,9 +3,9 @@ import { Skeleton } from './ui';
 
 function KpiCard({ label, value, secondary, accent }) {
   return (
-    <article className="border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="card p-4 transition-shadow hover:shadow-md">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
       <p className={`mt-1 text-xs ${accent || 'text-slate-500'}`}>{secondary}</p>
     </article>
   );

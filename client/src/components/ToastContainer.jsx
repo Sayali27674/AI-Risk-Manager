@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAlerts } from '../context/AlertContext';
 
 function severityStyles(severity) {
-  if (severity === 'CRITICAL') return 'border-red-500 bg-red-50';
-  if (severity === 'HIGH') return 'border-orange-400 bg-orange-50';
-  return 'border-blue-400 bg-blue-50';
+  if (severity === 'CRITICAL') return 'border-l-red-500 bg-red-50';
+  if (severity === 'HIGH') return 'border-l-orange-400 bg-orange-50';
+  return 'border-l-brand-400 bg-brand-50';
 }
 
 function severityIcon(severity) {
@@ -26,7 +26,7 @@ function Toast({ toast, onDismiss }) {
 
   return (
     <div
-      className={`pointer-events-auto w-80 rounded-lg border-l-4 p-4 shadow-lg transition-all ${severityStyles(toast.severity)}`}
+      className={`pointer-events-auto w-80 animate-rise overflow-hidden rounded-xl border border-slate-200 border-l-4 p-4 shadow-xl shadow-slate-900/10 transition-all ${severityStyles(toast.severity)}`}
       role="alert"
     >
       <div className="flex items-start justify-between gap-2">
@@ -60,7 +60,7 @@ function Toast({ toast, onDismiss }) {
         <button
           type="button"
           onClick={() => onDismiss(toast.id)}
-          className="shrink-0 text-gray-400 hover:text-gray-600 text-lg leading-none"
+          className="shrink-0 rounded-md p-0.5 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600"
           aria-label="Dismiss"
         >
           ×
@@ -72,7 +72,7 @@ function Toast({ toast, onDismiss }) {
           <Link
             to={`/transactions/${toast.transactionId}`}
             onClick={() => onDismiss(toast.id)}
-            className="inline-flex items-center gap-1 rounded bg-white px-3 py-1 text-xs font-medium text-gray-800 shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
           >
             View Transaction →
           </Link>

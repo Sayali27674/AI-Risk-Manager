@@ -200,22 +200,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-start justify-between gap-4 border border-slate-200 bg-white px-4 py-4 shadow-sm">
+      <header className="card flex flex-wrap items-start justify-between gap-4 p-5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Risk Intelligence Center</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Risk Intelligence Center
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
             Real-time monitoring and AI-powered risk analysis
           </p>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-            <span>{user?.name || 'Unknown user'}</span>
-            <span className="font-semibold">{user?.role || 'N/A'}</span>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-medium">
+              {user?.name || 'Unknown user'}
+            </span>
+            <span className="rounded-md bg-brand-50 px-2 py-0.5 font-semibold text-brand-700">
+              {user?.role || 'N/A'}
+            </span>
             <span>{formatDate(new Date())}</span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm">
             <span
-              className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`}
+              className={`h-2.5 w-2.5 rounded-full ${
+                connected
+                  ? 'animate-pulse bg-emerald-500'
+                  : 'bg-slate-400'
+              }`}
               aria-hidden="true"
             />
             <span className="font-semibold text-slate-800">
