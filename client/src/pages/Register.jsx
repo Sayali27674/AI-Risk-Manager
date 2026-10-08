@@ -15,13 +15,36 @@ const Register = () => {
 
   const navigate = useNavigate();
 
+  const validateForm = () => {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || trimmedName.length < 2) {
+      return 'Name must contain at least 2 characters';
+    }
+
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return 'A valid email is required';
+    }
+
+    if (!password || password.length < 8) {
+      return 'Password must contain at least 8 characters';
+    }
+
+    if (password !== confirmPassword) {
+      return 'Passwords do not match';
+    }
+
+    return '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Check password confirmation
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -29,9 +52,10 @@ const Register = () => {
 
     try {
       await register({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         password,
+        confirmPassword,
       });
 
       // AuthContext already logs the user in after registration.
@@ -77,6 +101,7 @@ const Register = () => {
             onChange={(e) => setName(e.target.value)}
             className="border rounded w-full py-2 px-3"
             placeholder="Enter your name"
+            minLength={2}
             required
           />
         </div>
@@ -117,7 +142,7 @@ const Register = () => {
             onChange={(e) => setPassword(e.target.value)}
             className="border rounded w-full py-2 px-3"
             placeholder="Enter your password"
-            minLength={6}
+            minLength={8}
             required
           />
         </div>
@@ -138,7 +163,7 @@ const Register = () => {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="border rounded w-full py-2 px-3"
             placeholder="Confirm your password"
-            minLength={6}
+            minLength={8}
             required
           />
         </div>

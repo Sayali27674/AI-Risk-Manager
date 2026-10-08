@@ -18,6 +18,29 @@ function writeAudit(userId, action, entity, entityId, metadata = {}) {
   });
 }
 
+function canViewRiskExplanation(user) {
+  return ['ADMIN', 'ANALYST'].includes(user?.role);
+}
+
+function sanitizeTransactionRisk(transaction, user) {
+  if (!transaction?.riskScore || canViewRiskExplanation(user)) {
+    return transaction;
+  }
+
+  const reasons = transaction.riskScore.reasons || {};
+
+  return {
+    ...transaction,
+    riskScore: {
+      ...transaction.riskScore,
+      reasons: {
+        ...reasons,
+        shap_factors: [],
+      },
+    },
+  };
+}
+
 async function recalculateRisk(req, res, next) {
   try {
     const id = parseId(req.params.id);
@@ -54,26 +77,66 @@ async function recalculateRisk(req, res, next) {
 
 async function getTransactions(req, res, next) {
   try {
-    const transactions = await prisma.transaction.findMany({
-      include: {
-        vendor: true,
-        riskScore: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+    const status = ['PENDING', 'APPROVED', 'REJECTED', 'FLAGGED'].includes(req.query.status)
+      ? req.query.status
+      : null;
+    const riskLevel = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(req.query.riskLevel)
+      ? req.query.riskLevel
+      : null;
+    const search = String(req.query.search || '').trim();
+
+    const where = {
+      ...(req.user.role === 'USER' ? { userId: req.user.id } : {}),
+      ...(status ? { status } : {}),
+      ...(riskLevel ? { riskScore: { riskLevel } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { vendor: { name: { contains: search, mode: 'insensitive' } } },
+              { location: { contains: search, mode: 'insensitive' } },
+              { transactionType: { contains: search, mode: 'insensitive' } },
+              ...(Number.isInteger(Number(search)) && Number(search) > 0
+                ? [{ id: Number(search) }]
+                : []),
+            ],
+          }
+        : {}),
+    };
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          vendor: true,
+          riskScore: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: req.user.role !== 'USER',
+              role: true,
+            },
           },
+          alerts: true,
         },
-        alerts: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { timestamp: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.transaction.count({ where }),
+    ]);
 
     return res.json({
       success: true,
       data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     });
   } catch (error) {
     return next(error);
@@ -124,7 +187,7 @@ async function getTransaction(req, res, next) {
 
     return res.json({
       success: true,
-      data: transaction,
+      data: sanitizeTransactionRisk(transaction, req.user),
     });
   } catch (error) {
     return next(error);
@@ -239,7 +302,7 @@ async function createTransaction(req, res, next) {
 
     return res.status(201).json({
       success: true,
-      data: result,
+      data: sanitizeTransactionRisk(result, req.user),
     });
   } catch (error) {
     return next(error);
@@ -404,7 +467,7 @@ async function updateTransaction(req, res, next) {
 
     return res.json({
       success: true,
-      data: result,
+      data: sanitizeTransactionRisk(result, req.user),
     });
   } catch (error) {
     return next(error);

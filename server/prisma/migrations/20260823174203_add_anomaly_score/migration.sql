@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "RiskScore" ALTER COLUMN "anomalyScore" SET DATA TYPE DOUBLE PRECISION;

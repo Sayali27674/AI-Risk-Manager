@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { fetchAlerts } from '../services/api';
 
 export default function Alerts() {
-  const [severity, setSeverity] = useState('');
-  const [status, setStatus] = useState('');
+  const [searchParams] = useSearchParams();
+  const [severity, setSeverity] = useState(searchParams.get('severity') || '');
+  const [status, setStatus] = useState(searchParams.get('status') || '');
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setSeverity(searchParams.get('severity') || '');
+    setStatus(searchParams.get('status') || '');
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;

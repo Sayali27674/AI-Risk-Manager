@@ -1,9 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
 }
 
-generator client {
-  provider = "prisma-client-js"
+model User {
+  id           Int           @id @default(autoincrement())
+  role         Role          @default(USER)
+  createdAt    DateTime      @default(now())
+  email        String        @unique
+  name         String
+  passwordHash String
+  updatedAt    DateTime      @updatedAt
+  auditLogs    AuditLog[]
+  transactions Transaction[]
+}
+
+model Vendor {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  category     String
+  country      String
+  createdAt    DateTime      @default(now())
+  riskLevel    RiskLevel     @default(LOW)
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+model Transaction {
+  id              Int               @id @default(autoincrement())
+  amount          Decimal           @db.Decimal(12, 2)
+  userId          Int
+  vendorId        Int
+  createdAt       DateTime          @default(now())
+  currency        String            @default("USD")
+  deviceId        String
+  location        String
+  status          TransactionStatus @default(PENDING)
+  timestamp       DateTime          @default(now())
+  transactionType String
+  updatedAt       DateTime          @updatedAt
+  alerts          Alert[]
+  riskScore       RiskScore?
+  user            User              @relation(fields: [userId], references: [id])
+  vendor          Vendor            @relation(fields: [vendorId], references: [id])
+
+  @@index([userId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([timestamp])
+}
+
+model RiskScore {
+  id               Int         @id @default(autoincrement())
+  score            Int
+  transactionId    Int         @unique
+  anomalyScore     Float?
+  createdAt        DateTime    @default(now())
+  fraudProbability Decimal?    @db.Decimal(5, 4)
+  modelVersion     String?
+  reasons          Json
+  riskLevel        RiskLevel
+  ruleScore        Int
+  transaction      Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id            Int         @id @default(autoincrement())
+  message       String
+  transactionId Int
+  createdAt     DateTime    @default(now())
+  severity      RiskLevel
+  status        AlertStatus @default(OPEN)
+  type          String
+  updatedAt     DateTime    @updatedAt
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  action    String
+  userId    Int
+  createdAt DateTime @default(now())
+  entity    String
+  entityId  String
+  metadata  Json
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 enum Role {
@@ -31,88 +115,4 @@ enum AlertStatus {
   INVESTIGATING
   RESOLVED
   DISMISSED
-}
-
-model User {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  passwordHash String
-  role         Role          @default(USER)
-  transactions Transaction[]
-  auditLogs    AuditLog[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-}
-
-model Vendor {
-  id           Int           @id @default(autoincrement())
-  name         String        @unique
-  category     String
-  country      String
-  riskLevel    RiskLevel     @default(LOW)
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-}
-
-model Transaction {
-  id              Int               @id @default(autoincrement())
-  userId          Int
-  vendorId        Int
-  amount          Decimal           @db.Decimal(12, 2)
-  currency        String            @default("USD")
-  transactionType String
-  location        String
-  deviceId        String
-  status          TransactionStatus @default(PENDING)
-  timestamp       DateTime          @default(now())
-  user            User              @relation(fields: [userId], references: [id])
-  vendor          Vendor            @relation(fields: [vendorId], references: [id])
-  riskScore       RiskScore?
-  alerts          Alert[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-
-  @@index([userId])
-  @@index([vendorId])
-  @@index([status])
-  @@index([timestamp])
-}
-
-model RiskScore {
-  id               Int         @id @default(autoincrement())
-  transactionId    Int         @unique
-  score            Int
-  riskLevel        RiskLevel
-  ruleScore        Int
-  anomalyScore     Int?
-  fraudProbability Decimal?    @db.Decimal(5, 4)
-  modelVersion     String?
-  reasons          Json
-  transaction      Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  createdAt        DateTime    @default(now())
-}
-
-model Alert {
-  id            Int         @id @default(autoincrement())
-  transactionId Int
-  type          String
-  severity      RiskLevel
-  message       String
-  status        AlertStatus @default(OPEN)
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-}
-
-model AuditLog {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  action    String
-  entity    String
-  entityId  String
-  metadata  Json
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
 }

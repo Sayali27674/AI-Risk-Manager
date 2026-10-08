@@ -5,10 +5,12 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/authRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
+const userRoutes = require('./routes/userRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const riskScoreRoutes = require('./routes/riskScoreRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const investigationRoutes = require('./routes/investigationRoutes');
 const errorMiddleware = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -27,11 +29,13 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/risk-scores', riskScoreRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/investigation', investigationRoutes);
 
 app.use(errorMiddleware);
 

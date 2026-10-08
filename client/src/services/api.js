@@ -33,6 +33,11 @@ function payload(response) {
   return response?.data || {};
 }
 
+function unwrap(response) {
+  const body = payload(response);
+  return body.data ?? body;
+}
+
 function toListResult(response) {
   const body = response?.data || {};
 
@@ -50,16 +55,19 @@ export const authApi = {
 };
 
 export const dashboardApi = {
-  summary: () => api.get('/dashboard/summary'),
-  riskTrends: () => api.get('/dashboard/risk-trends'),
-  recentTransactions: () =>
-    api.get('/dashboard/recent-transactions'),
-  recentAlerts: () => api.get('/dashboard/recent-alerts'),
+  overview: (params = {}) => api.get('/dashboard', { params }),
+  highRisk: (params = {}) => api.get('/dashboard/high-risk', { params }),
+  summary: (params = {}) => api.get('/dashboard/summary', { params }),
+  riskTrends: (params = {}) => api.get('/dashboard/risk-trends', { params }),
+  recentTransactions: (params = {}) =>
+    api.get('/dashboard/recent-transactions', { params }),
+  recentAlerts: (params = {}) => api.get('/dashboard/recent-alerts', { params }),
 };
 
 export const transactionApi = {
   list: (params = {}) => api.get('/transactions', { params }),
   get: (id) => api.get(`/transactions/${id}`),
+  behavior: (id) => api.get(`/transactions/${id}/behavior`),
   risk: (id) => api.get(`/transactions/${id}/risk`),
   recalculateRisk: (id) =>
     api.post(`/transactions/${id}/recalculate-risk`),
@@ -88,27 +96,32 @@ export const riskApi = {
   get: (id) => api.get(`/risk-scores/${id}`),
 };
 
-// Compatibility helpers used by page components.
-export async function fetchDashboardData() {
-  const [summary, trends, transactions, alerts] =
-    await Promise.allSettled([
-      dashboardApi.summary(),
-      dashboardApi.riskTrends(),
-      dashboardApi.recentTransactions(),
-      dashboardApi.recentAlerts(),
-    ]);
+export const userApi = {
+  behavior: (userId) => api.get(`/users/${userId}/behavior`),
+};
 
-  const read = (result, fallback) =>
-    result.status === 'fulfilled'
-      ? result.value.data?.data ?? fallback
-      : fallback;
+export const investigationApi = {
+  chat: (message) => api.post('/investigation/chat', { message }),
+};
+
+
+// Compatibility helpers used by page components.
+export async function fetchDashboardOverview(params = {}) {
+  return unwrap(await dashboardApi.overview(params));
+}
+
+export async function fetchDashboardHighRisk(params = {}) {
+  const response = await dashboardApi.highRisk(params);
+  const body = response?.data || {};
 
   return {
-    ...(read(summary, {}) || {}),
-    riskTrends: read(trends, []),
-    recentTransactions: read(transactions, []),
-    recentAlerts: read(alerts, []),
+    items: Array.isArray(body.data) ? body.data : [],
+    pagination: body.pagination || {},
   };
+}
+
+export async function fetchDashboardData(params = {}) {
+  return fetchDashboardOverview(params);
 }
 
 export async function fetchTransactions(params = {}) {
@@ -121,6 +134,10 @@ export async function fetchTransactionDetails(id) {
 
 export async function fetchTransactionRisk(id) {
   return unwrap(await transactionApi.risk(id));
+}
+
+export async function fetchTransactionBehavior(id) {
+  return unwrap(await transactionApi.behavior(id));
 }
 
 export async function recalculateTransactionRisk(id) {
@@ -151,4 +168,14 @@ export async function fetchRiskAnalysisData(params = {}) {
   return response?.data || { data: [] };
 }
 
+export async function fetchUserBehaviorProfile(userId) {
+  return unwrap(await userApi.behavior(userId));
+}
+
+export async function sendInvestigationMessage(message) {
+  const response = await investigationApi.chat(message);
+  return response?.data?.data || response?.data || {};
+}
+
 export default api;
+

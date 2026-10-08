@@ -2,6 +2,7 @@ const express = require('express');
 const authMiddleware = require('../middleware/authMiddleware');
 const authorizeRoles = require('../middleware/roleMiddleware');
 const transactionController = require('../controllers/transactionController');
+const behaviorController = require('../controllers/behaviorController');
 
 const router = express.Router();
 
@@ -26,6 +27,12 @@ router.post(
 );
 
 router.get(
+  '/:id/behavior',
+  authMiddleware,
+  behaviorController.getTransactionBehavior,
+);
+
+router.get(
   '/:id',
   authMiddleware,
   transactionController.getTransaction,
@@ -46,4 +53,3 @@ router.delete(
 );
 
 module.exports = router;
-

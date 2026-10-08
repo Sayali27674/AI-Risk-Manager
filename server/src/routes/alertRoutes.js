@@ -5,7 +5,7 @@ const authorizeRoles = require('../middleware/roleMiddleware');
 
 const router = express.Router();
 
-// Get all alerts
+// Get all alerts (with filters: ?severity=HIGH&status=OPEN&page=1&limit=50)
 router.get(
   '/',
   authMiddleware,
@@ -21,7 +21,7 @@ router.get(
   alertController.getAlertById,
 );
 
-// Create a new alert
+// Create a new alert (admin only)
 router.post(
   '/',
   authMiddleware,
@@ -29,7 +29,15 @@ router.post(
   alertController.createAlert,
 );
 
-// Update an alert
+// Update alert status via dedicated endpoint (ADMIN + ANALYST can triage)
+router.put(
+  '/:id/status',
+  authMiddleware,
+  authorizeRoles('ADMIN', 'ANALYST'),
+  alertController.updateAlertStatus,
+);
+
+// Full alert update (admin only)
 router.put(
   '/:id',
   authMiddleware,

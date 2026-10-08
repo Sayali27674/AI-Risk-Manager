@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.get('/', controller.overview);
+router.get('/high-risk', controller.highRisk);
 router.get('/summary', controller.summary);
 router.get('/risk-trends', controller.riskTrends);
 router.get('/recent-transactions', controller.recentTransactions);

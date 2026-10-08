@@ -11,6 +11,10 @@ import TransactionDetails from './pages/TransactionDetails';
 import Alerts from './pages/Alerts';
 import Vendors from './pages/Vendors';
 import RiskAnalysis from './pages/RiskAnalysis';
+import RiskProfile from './pages/RiskProfile';
+import RiskInvestigation from './pages/RiskInvestigation';
+import Profile from './pages/Profile';
+
 
 export default function App() {
   return (
@@ -29,6 +33,10 @@ export default function App() {
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/risk-analysis" element={<RiskAnalysis />} />
+          <Route path="/risk-profile" element={<RiskProfile />} />
+          <Route path="/investigation" element={<RiskInvestigation />} />
+          <Route path="/profile" element={<Profile />} />
+
         </Route>
       </Route>
 

@@ -10,3 +10,7 @@ coverage/
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+ai-service/data/*.csv
+ai-service/models/*.joblib
+ai-service/.venv/
+ai-service/venv/
