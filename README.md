@@ -55,11 +55,14 @@ ai-risk-manager
      npm install
      ```
    - Create a `.env` file based on the `.env.example` file and configure your database connection and JWT secrets.
-   - Run database migrations and seed the database:
+   - Run database migrations and add demo data:
      ```bash
      npx prisma migrate dev
-     npx prisma db seed
+     npm run seed
      ```
+     The seed is safe to rerun: it upserts the demo accounts and vendors and
+     updates the same 100 sample transactions. It does not delete other data.
+     It is disabled when `NODE_ENV=production`.
    - Start the server:
      ```bash
      npm start
@@ -83,6 +86,27 @@ ai-risk-manager
 ### Usage
 - Access the application at `http://localhost:3000` (or the port specified in your Vite configuration).
 - Use the login and registration pages to create an account and access the dashboard.
+- During development, registration offers a role selector for testing. The API
+  accepts selected roles only when `NODE_ENV=development`; production
+  registration always creates a USER and rejects attempts to choose a role.
+
+### Demo dashboard accounts
+
+`npm run seed` creates one ADMIN, two ANALYST, and five USER accounts. They all
+use the seeded, development-only password `RiskShield-Demo-2026!`:
+
+| Role | Email |
+| --- | --- |
+| ADMIN | `demo.admin@riskshield.test` |
+| ANALYST | `demo.analyst1@riskshield.test`, `demo.analyst2@riskshield.test` |
+| USER | `demo.user1@riskshield.test` through `demo.user5@riskshield.test` |
+
+The seed creates rule-based demonstration risk records and computes behavioral
+analysis using the existing behavioral service. Anomaly scores, fraud
+probabilities, and SHAP explanations are left empty because the seed does not
+run those models. Do not reuse the demo password outside a local development
+database. Production admin accounts must be provisioned through an authorized
+operational process, not public registration or the demo seed.
 
 ### Features
 - User authentication with JWT

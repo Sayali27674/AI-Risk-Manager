@@ -11,6 +11,7 @@ const alertRoutes = require('./routes/alertRoutes');
 const riskScoreRoutes = require('./routes/riskScoreRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const investigationRoutes = require('./routes/investigationRoutes');
+const systemHealthRoutes = require('./routes/systemHealthRoutes');
 const errorMiddleware = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/risk-scores', riskScoreRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/investigation', investigationRoutes);
+app.use('/api/system', systemHealthRoutes);
 
 app.use(errorMiddleware);
 

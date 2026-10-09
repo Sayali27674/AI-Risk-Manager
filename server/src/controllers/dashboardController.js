@@ -58,6 +58,24 @@ async function recentAlerts(req, res, next) {
   }
 }
 
+async function adminOverview(req, res, next) {
+  try {
+    const data = await dashboardService.getAdminOverview(req.user, req.query);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function analystOverview(req, res, next) {
+  try {
+    const data = await dashboardService.getAnalystOverview(req.user, req.query);
+    return res.json({ success: true, data });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   overview,
   highRisk,
@@ -65,4 +83,6 @@ module.exports = {
   riskTrends,
   recentTransactions,
   recentAlerts,
+  adminOverview,
+  analystOverview,
 };

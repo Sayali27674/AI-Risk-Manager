@@ -62,6 +62,8 @@ export const dashboardApi = {
   recentTransactions: (params = {}) =>
     api.get('/dashboard/recent-transactions', { params }),
   recentAlerts: (params = {}) => api.get('/dashboard/recent-alerts', { params }),
+  admin: (params = {}) => api.get('/dashboard/admin', { params }),
+  analyst: (params = {}) => api.get('/dashboard/analyst', { params }),
 };
 
 export const transactionApi = {
@@ -97,7 +99,13 @@ export const riskApi = {
 };
 
 export const userApi = {
+  list: (params = {}) => api.get('/users', { params }),
+  stats: () => api.get('/users/stats'),
   behavior: (userId) => api.get(`/users/${userId}/behavior`),
+};
+
+export const systemApi = {
+  health: () => api.get('/system/health'),
 };
 
 export const investigationApi = {
@@ -175,6 +183,31 @@ export async function fetchUserBehaviorProfile(userId) {
 export async function sendInvestigationMessage(message) {
   const response = await investigationApi.chat(message);
   return response?.data?.data || response?.data || {};
+}
+
+export async function fetchAdminDashboardOverview(params = {}) {
+  return unwrap(await dashboardApi.admin(params));
+}
+
+export async function fetchAnalystDashboardOverview(params = {}) {
+  return unwrap(await dashboardApi.analyst(params));
+}
+
+export async function fetchUsers(params = {}) {
+  const response = await userApi.list(params);
+  const body = response?.data || {};
+  return {
+    items: Array.isArray(body.data) ? body.data : [],
+    pagination: body.pagination || {},
+  };
+}
+
+export async function fetchUserStats() {
+  return unwrap(await userApi.stats());
+}
+
+export async function fetchSystemHealth() {
+  return unwrap(await systemApi.health());
 }
 
 export default api;

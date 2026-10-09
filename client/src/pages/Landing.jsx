@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute, useAuth } from '../context/AuthContext';
 import {
   AlertIcon,
   AnalyticsIcon,
@@ -94,7 +94,7 @@ const STATS = [
 
 export default function Landing() {
   const { user } = useAuth();
-  const consoleHref = user ? '/dashboard' : '/register';
+  const consoleHref = user ? getDashboardRoute(user.role) : '/register';
 
   return (
     <div className="min-h-screen bg-white text-slate-900 antialiased">
@@ -129,7 +129,7 @@ export default function Landing() {
 
           <div className="flex items-center gap-2.5">
             {user ? (
-              <Link to="/dashboard" className="btn-primary !py-2 text-sm">
+              <Link to={consoleHref} className="btn-primary !py-2 text-sm">
                 Open Console
                 <ArrowRightIcon className="h-4 w-4" />
               </Link>
@@ -498,4 +498,3 @@ export default function Landing() {
     </div>
   );
 }
-

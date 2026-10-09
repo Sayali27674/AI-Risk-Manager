@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getDashboardRoute } from '../context/AuthContext';
 import { ArrowRightIcon, CheckCircleIcon, ShieldIcon } from '../components/icons';
 
 const Register = () => {
@@ -10,6 +10,7 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('USER');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,15 +53,18 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register({
+      const registration = {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
         confirmPassword,
-      });
+      };
+      if (import.meta.env.DEV) registration.role = role;
+
+      const newUser = await register(registration);
 
       // AuthContext already logs the user in after registration.
-      navigate('/dashboard');
+      navigate(getDashboardRoute(newUser?.role));
     } catch (err) {
       setError(
         err.response?.data?.message || 'Registration failed. Please try again.'
@@ -183,6 +187,27 @@ const Register = () => {
                 required
               />
             </div>
+
+            {import.meta.env.DEV && (
+              <div>
+                <label className="field-label" htmlFor="role">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="input"
+                >
+                  <option value="USER">USER</option>
+                  <option value="ANALYST">ANALYST</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                <p className="mt-1.5 text-xs font-medium text-amber-700">
+                  DEVELOPMENT / TESTING ONLY: role selection is disabled in production.
+                </p>
+              </div>
+            )}
 
             {/* Password */}
             <div>

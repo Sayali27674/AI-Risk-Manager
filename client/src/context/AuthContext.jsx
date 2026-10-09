@@ -3,6 +3,12 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+export function getDashboardRoute(role) {
+  if (role === 'ADMIN') return '/admin/dashboard';
+  if (role === 'ANALYST') return '/analyst/dashboard';
+  return '/dashboard';
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,12 +39,14 @@ export function AuthProvider({ children }) {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('authToken', data.token);
     setUser(data.user);
+    return data.user;
   }
 
   async function register(values) {
     const { data } = await api.post('/auth/register', values);
     localStorage.setItem('authToken', data.token);
     setUser(data.user);
+    return data.user;
   }
 
   async function logout() {
@@ -50,8 +58,19 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const getUserDashboardRoute = () => getDashboardRoute(user?.role);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        getDashboardRoute: getUserDashboardRoute,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

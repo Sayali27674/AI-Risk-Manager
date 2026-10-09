@@ -426,6 +426,8 @@ function buildBehavioralRows(transactions, canViewUsers) {
         : null,
       newDevice: behavior.available ? Boolean(behavior.deviations?.device?.unusual) : null,
       newLocation: behavior.available ? Boolean(behavior.deviations?.location?.unusual) : null,
+      unusualTime: behavior.available ? Boolean(behavior.deviations?.time?.unusual) : null,
+      unusualVendor: behavior.available ? Boolean(behavior.deviations?.vendor?.unusual) : null,
       riskLevel: behavior.available
         ? behavior.behavioralRiskLevel
         : item.riskScore?.riskLevel || null,
@@ -801,8 +803,17 @@ async function getOverview(user, query = {}) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const alertCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  const alertStatusCounts = {
+    OPEN: 0,
+    INVESTIGATING: 0,
+    RESOLVED: 0,
+    DISMISSED: 0,
+  };
   for (const alert of alertItems) {
     if (alertCounts[alert.severity] != null) alertCounts[alert.severity] += 1;
+    if (alertStatusCounts[alert.status] != null) {
+      alertStatusCounts[alert.status] += 1;
+    }
   }
 
   const anomalyScores = transactions
@@ -829,6 +840,7 @@ async function getOverview(user, query = {}) {
     threatMonitor: threatEvents,
     alertCenter: {
       counts: alertCounts,
+      statusCounts: alertStatusCounts,
       recent: alertItems.slice(0, 8),
     },
     behavioral: {
@@ -965,6 +977,397 @@ async function getRecentAlerts(user, query = {}) {
   return overview.alertCenter.recent;
 }
 
+const HIGH_RISK_BAND_RANK = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 };
+const ALERT_STATUS_RANK = { OPEN: 4, INVESTIGATING: 3, RESOLVED: 2, DISMISSED: 1 };
+const FRAUD_THRESHOLD = FRAUD_SUSPECTED_THRESHOLD;
+
+function worstAlertStatus(alerts) {
+  if (!Array.isArray(alerts) || !alerts.length) return 'NONE';
+  let worst = 0;
+  let status = 'NONE';
+  for (const alert of alerts) {
+    const rank = ALERT_STATUS_RANK[alert.status] || 0;
+    if (rank > worst) {
+      worst = rank;
+      status = alert.status;
+    }
+  }
+  return status;
+}
+
+// Returns the most actionable alert (OPEN > INVESTIGATING > RESOLVED > DISMISSED)
+// so investigation rows can link directly to alert triage actions.
+function worstAlert(alerts) {
+  if (!Array.isArray(alerts) || !alerts.length) return null;
+  let worst = null;
+  let worstRank = 0;
+  for (const alert of alerts) {
+    const rank = ALERT_STATUS_RANK[alert.status] || 0;
+    if (rank > worstRank) {
+      worstRank = rank;
+      worst = alert;
+    }
+  }
+  return worst;
+}
+
+function buildInvestigationQueue(transactions, staff) {
+  const queue = transactions
+    .filter((item) =>
+      ['CRITICAL', 'HIGH', 'MEDIUM'].includes(item.riskScore?.riskLevel),
+    )
+    .map((item) => {
+      const alert = worstAlert(item.alerts);
+      return {
+        ...serializeTransactionRow(item, staff),
+        transactionId: item.id,
+        alertId: alert ? alert.id : null,
+        alertStatus: worstAlertStatus(item.alerts),
+      };
+    })
+    .sort((a, b) => {
+      const bandA = HIGH_RISK_BAND_RANK[a.riskLevel] || 0;
+      const bandB = HIGH_RISK_BAND_RANK[b.riskLevel] || 0;
+      if (bandA !== bandB) return bandB - bandA;
+      const scoreA = Number(a.riskScore) || 0;
+      const scoreB = Number(b.riskScore) || 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    })
+    .slice(0, 25);
+  return queue;
+}
+
+function buildAttentionAlerts(transactions) {
+  const items = [];
+  for (const item of transactions) {
+    if (!item.alerts || !item.alerts.length) continue;
+    for (const alert of item.alerts) {
+      if (!['CRITICAL', 'HIGH'].includes(alert.severity)) continue;
+      if (!['OPEN', 'INVESTIGATING'].includes(alert.status)) continue;
+      items.push({
+        id: alert.id,
+        severity: alert.severity,
+        message: alert.message,
+        type: alert.type,
+        status: alert.status,
+        createdAt: alert.createdAt,
+        transactionId: item.id,
+        amount: item.amount,
+        currency: item.currency,
+        vendor: item.vendor?.name || null,
+        user: item.user?.name || null,
+        riskScore: item.riskScore?.score ?? null,
+        riskLevel: item.riskScore?.riskLevel ?? null,
+      });
+    }
+  }
+  return items
+    .sort((a, b) => {
+      const bandA = HIGH_RISK_BAND_RANK[a.severity] || 0;
+      const bandB = HIGH_RISK_BAND_RANK[b.severity] || 0;
+      if (bandA !== bandB) return bandB - bandA;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })
+    .slice(0, 20);
+}
+
+function buildFraudPredictionSummary(transactions, staff) {
+  const suspected = transactions.filter((item) =>
+    isFraudSuspected(item.riskScore),
+  );
+  const fraudScores = suspected
+    .map((item) => toNumber(item.riskScore?.fraudProbability))
+    .filter((v) => v != null);
+  const averageProbability = fraudScores.length
+    ? Number((fraudScores.reduce((a, b) => a + b, 0) / fraudScores.length).toFixed(4))
+    : null;
+
+  const recent = suspected
+    .sort(
+      (a, b) =>
+        (toNumber(b.riskScore?.fraudProbability) || 0)
+        - (toNumber(a.riskScore?.fraudProbability) || 0),
+    )
+    .slice(0, 8)
+    .map((item) => serializeTransactionRow(item, staff));
+
+  return {
+    highProbabilityCount: suspected.length,
+    averageProbability,
+    recent,
+  };
+}
+
+function buildAnomalySummary(transactions, staff) {
+  const anomalous = transactions.filter((item) => isAnomaly(item.riskScore));
+  const scores = anomalous
+    .map((item) => toNumber(item.riskScore?.anomalyScore))
+    .filter((v) => v != null);
+  const averageScore = scores.length
+    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+    : null;
+  const recent = anomalous
+    .sort(
+      (a, b) =>
+        (toNumber(b.riskScore?.anomalyScore) || 0)
+        - (toNumber(a.riskScore?.anomalyScore) || 0),
+    )
+    .slice(0, 8)
+    .map((item) => serializeTransactionRow(item, staff));
+  return {
+    count: anomalous.length,
+    averageAnomalyScore: averageScore,
+    recent,
+  };
+}
+
+function buildBehavioralInsights(transactions, canViewUsers) {
+  const rows = buildBehavioralRows(transactions, canViewUsers);
+  const categories = {
+    unusualAmount: 0,
+    newDevice: 0,
+    newLocation: 0,
+    unusualTime: 0,
+    highFrequency: 0,
+    unusualVendor: 0,
+  };
+  for (const row of rows) {
+    if (!row.available) continue;
+    if ((row.amountDeviation ?? 1) >= 2) categories.unusualAmount += 1;
+    if (row.newDevice) categories.newDevice += 1;
+    if (row.newLocation) categories.newLocation += 1;
+    if (row.unusualTime) categories.unusualTime += 1;
+    if ((row.transactionFrequency ?? 0) >= 8) categories.highFrequency += 1;
+    if (row.unusualVendor) categories.unusualVendor += 1;
+  }
+  return {
+    rows,
+    insufficient: rows.length === 0,
+    categories,
+  };
+}
+
+function buildAiInsights(transactions, previousKpis, staff) {
+  const scored = transactions.filter((item) => item.riskScore);
+
+  const highestRisk = scored.length
+    ? scored.reduce((a, b) =>
+        Number(a.riskScore.score) >= Number(b.riskScore.score) ? a : b,
+      )
+    : null;
+
+  const fraudRows = scored.filter((item) =>
+    Number.isFinite(toNumber(item.riskScore?.fraudProbability)),
+  );
+  const highestFraud = fraudRows.length
+    ? fraudRows.reduce((a, b) =>
+        (toNumber(a.riskScore.fraudProbability) || 0)
+        >= (toNumber(b.riskScore.fraudProbability) || 0)
+          ? a
+          : b,
+      )
+    : null;
+
+  const vendorMap = new Map();
+  for (const item of transactions) {
+    if (!item.vendor) continue;
+    const entry = vendorMap.get(item.vendor.id) || {
+      vendorId: item.vendor.id,
+      vendor: item.vendor.name,
+      total: 0,
+      scoreSum: 0,
+      scored: 0,
+      highCount: 0,
+    };
+    entry.total += 1;
+    if (item.riskScore) {
+      entry.scoreSum += Number(item.riskScore.score || 0);
+      entry.scored += 1;
+      if (HIGH_RISK_LEVELS.includes(item.riskScore.riskLevel)) entry.highCount += 1;
+    }
+    vendorMap.set(item.vendor.id, entry);
+  }
+  const vendorSorted = [...vendorMap.values()]
+    .map((v) => ({
+      ...v,
+      averageRisk: v.scored ? Math.round(v.scoreSum / v.scored) : 0,
+      highShare: percent(v.highCount, v.total),
+    }))
+    .sort((a, b) => b.averageRisk - a.averageRisk);
+  const mostSuspiciousVendor = vendorSorted[0] || null;
+
+  let largestRiskIncrease = null;
+  if (previousKpis) {
+    const currentHigh = HIGH_RISK_LEVELS.includes('HIGH')
+      ? previousKpis.highRiskTransactions
+      : 0;
+    const currentCritical = previousKpis.criticalRiskTransactions;
+    const previousTotal = previousKpis.totalTransactions;
+    if (previousTotal > 0 && transactions.length > 0) {
+      const currentHighCriticalRatio = percent(
+        currentHigh + currentCritical,
+        previousTotal,
+      ) || 0;
+      const actualHigh = transactions.filter(
+        (t) => t.riskScore?.riskLevel === 'HIGH',
+      ).length;
+      const actualCritical = transactions.filter(
+        (t) => t.riskScore?.riskLevel === 'CRITICAL',
+      ).length;
+      const actualRatio = percent(
+        actualHigh + actualCritical,
+        transactions.length,
+      ) || 0;
+      const delta = Number((actualRatio - currentHighCriticalRatio).toFixed(1));
+      if (Number.isFinite(delta) && Math.abs(delta) > 0.1) {
+        largestRiskIncrease = {
+          deltaPercent: delta,
+          direction: delta > 0 ? 'UP' : 'DOWN',
+        };
+      }
+    }
+  }
+
+  const behavioralRows = buildBehavioralRows(transactions, staff);
+  const mostUnusual = behavioralRows
+    .filter((r) => r.available)
+    .sort(
+      (a, b) => Number(b.behavioralScore || 0) - Number(a.behavioralScore || 0),
+    )[0] || null;
+
+  const serializeTransaction = (item) =>
+    item ? serializeTransactionRow(item, staff) : null;
+
+  return {
+    highestRiskTransaction: highestRisk
+      ? {
+          entityType: 'TRANSACTION',
+          entityId: highestRisk.id,
+          label: `Transaction #${highestRisk.id}`,
+          score: highestRisk.riskScore?.score ?? null,
+          level: highestRisk.riskScore?.riskLevel ?? null,
+          transaction: serializeTransaction(highestRisk),
+        }
+      : null,
+    highestFraudProbability: highestFraud
+      ? {
+          entityType: 'TRANSACTION',
+          entityId: highestFraud.id,
+          label: `Transaction #${highestFraud.id}`,
+          probability: toNumber(highestFraud.riskScore?.fraudProbability),
+          transaction: serializeTransaction(highestFraud),
+        }
+      : null,
+    mostSuspiciousVendor: mostSuspiciousVendor
+      ? {
+          entityType: 'VENDOR',
+          entityId: mostSuspiciousVendor.vendorId,
+          label: mostSuspiciousVendor.vendor,
+          averageRisk: mostSuspiciousVendor.averageRisk,
+          highSharePercent: mostSuspiciousVendor.highShare,
+        }
+      : null,
+    largestRiskIncrease,
+    mostUnusualUserBehavior: mostUnusual
+      ? {
+          entityType: 'USER',
+          entityId: mostUnusual.user?.id ?? null,
+          label: mostUnusual.user?.name ?? 'User',
+          behavioralScore: mostUnusual.behavioralScore,
+          riskLevel: mostUnusual.riskLevel,
+          transactionId: mostUnusual.transactionId,
+        }
+      : null,
+  };
+}
+
+async function getAdminOverview(user, query = {}) {
+  const baseOverview = await getOverview(user, query);
+  const staff = isStaff(user);
+
+  const vendorOverview = buildVendorOverview(
+    await loadFilteredTransactions(parseFilters(query, user), {
+      take: staff ? 5000 : 2000,
+    }),
+    staff,
+  );
+  const highRiskVendorCount = vendorOverview.filter((v) =>
+    HIGH_RISK_LEVELS.includes(v.riskLevel),
+  ).length;
+
+  const extraResults = await Promise.allSettled([
+    (async () => {
+      const userService = require('./userService');
+      return userService.getUserStats();
+    })(),
+    (async () => {
+      const systemHealth = require('./systemHealthService');
+      return systemHealth.checkAll();
+    })(),
+  ]);
+
+  const userStats = extraResults[0].status === 'fulfilled'
+    ? extraResults[0].value
+    : {
+        total: 0,
+        byRole: { ADMIN: 0, ANALYST: 0, USER: 0 },
+        recent: [],
+      };
+
+  const systemHealth = extraResults[1].status === 'fulfilled'
+    ? extraResults[1].value
+    : {
+        ruleEngine: 'UNAVAILABLE',
+        behavioral: 'UNAVAILABLE',
+        isolationForest: 'UNAVAILABLE',
+        xgboost: 'UNAVAILABLE',
+        shap: 'UNAVAILABLE',
+        aiInvestigationAgent: 'UNAVAILABLE',
+      };
+
+  return {
+    ...baseOverview,
+    userStats,
+    systemHealth,
+    highRiskVendorCount,
+  };
+}
+
+async function getAnalystOverview(user, query = {}) {
+  const staff = isStaff(user);
+  const filters = parseFilters(query, user);
+  const comparisonWindow = previousRange(filters.from, filters.to);
+  const take = staff ? 5000 : 2000;
+
+  const [transactions, previousTransactions, aiAvailable] = await Promise.all([
+    loadFilteredTransactions(filters, { take }),
+    comparisonWindow
+      ? loadFilteredTransactions(
+          { ...filters, from: comparisonWindow.from, to: comparisonWindow.to },
+          { take },
+        )
+      : Promise.resolve(null),
+    checkAiHealth(),
+  ]);
+
+  const baseOverview = await getOverview(user, query);
+  const previousKpis = previousTransactions
+    ? kpiFromTransactions(previousTransactions)
+    : null;
+
+  return {
+    ...baseOverview,
+    investigationQueue: buildInvestigationQueue(transactions, staff),
+    attentionAlerts: buildAttentionAlerts(transactions),
+    fraudPredictionSummary: buildFraudPredictionSummary(transactions, staff),
+    anomalySummary: buildAnomalySummary(transactions, staff),
+    behavioralInsights: buildBehavioralInsights(transactions, staff),
+    aiInsights: buildAiInsights(transactions, previousKpis, staff),
+    aiAvailable,
+  };
+}
+
 module.exports = {
   getOverview,
   getHighRiskTransactions,
@@ -973,4 +1376,6 @@ module.exports = {
   getRecentTransactions,
   getRecentAlerts,
   parseFilters,
+  getAdminOverview,
+  getAnalystOverview,
 };

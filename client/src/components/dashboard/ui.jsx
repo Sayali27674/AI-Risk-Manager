@@ -5,10 +5,19 @@ import {
   ShieldAlertIcon,
 } from '../icons';
 
-export function SectionCard({ title, subtitle, action, children, className = '' }) {
+export function SectionCard({
+  title,
+  subtitle,
+  action,
+  headerExtra,
+  children,
+  className = '',
+  loading,
+}) {
+  const headerRight = action || headerExtra;
   return (
     <section className={`overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow ${className}`}>
-      {(title || action) && (
+      {(title || headerRight) && (
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
           <div>
             {title && (
@@ -18,10 +27,10 @@ export function SectionCard({ title, subtitle, action, children, className = '' 
             )}
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
-          {action}
+          {headerRight}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-4">{loading ? <div className="space-y-2"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-14 w-full" /><Skeleton className="h-14 w-full" /></div> : children}</div>
     </section>
   );
 }
@@ -34,10 +43,22 @@ export function Skeleton({ className = 'h-24' }) {
   );
 }
 
-export function EmptyState({ message = 'No data available' }) {
+export function EmptyState({
+  title,
+  message = 'No data available',
+  icon,
+  compact = false,
+}) {
   return (
-    <div className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 text-center">
-      <DatabaseIcon className="h-6 w-6 text-slate-300" />
+    <div
+      className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 text-center ${
+        compact ? 'py-4 min-h-[72px]' : 'min-h-[140px] py-6'
+      }`}
+    >
+      {icon || <DatabaseIcon className="h-6 w-6 text-slate-300" />}
+      {title && (
+        <p className="text-sm font-semibold text-slate-700">{title}</p>
+      )}
       <p className="text-sm text-slate-500">{message}</p>
     </div>
   );
@@ -114,11 +135,28 @@ export function StatusBadge({ status }) {
   );
 }
 
-export function PrimaryButton({ children, className = '', ...props }) {
+const BUTTON_VARIANTS = {
+  primary:
+    'btn-primary !border-brand-600 !bg-brand-600 !text-white hover:!bg-brand-700 shadow-sm',
+  success:
+    '!border-emerald-600 !bg-emerald-600 !text-white hover:!bg-emerald-700 shadow-sm !rounded-md !px-3 !py-2 !text-xs !font-semibold',
+  ghost:
+    '!border-slate-200 !bg-white !text-slate-700 hover:!bg-slate-50 shadow-none !rounded-md !px-3 !py-2 !text-xs !font-semibold',
+  danger:
+    '!border-rose-300 !bg-rose-100 !text-rose-700 hover:!bg-rose-200 shadow-none !rounded-md !px-3 !py-2 !text-xs !font-semibold',
+};
+
+export function PrimaryButton({
+  children,
+  className = '',
+  variant = 'primary',
+  ...props
+}) {
+  const variantClass = BUTTON_VARIANTS[variant] || BUTTON_VARIANTS.primary;
   return (
     <button
       type="button"
-      className={`btn-primary !px-3 !py-2 !text-xs ${className}`}
+      className={`${variantClass} ${className}`}
       {...props}
     >
       {children}

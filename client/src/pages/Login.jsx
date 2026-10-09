@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, getDashboardRoute } from '../context/AuthContext';
 import { ArrowRightIcon, LockIcon, ShieldIcon } from '../components/icons';
 
 const Login = () => {
@@ -17,8 +17,8 @@ const Login = () => {
         setSubmitting(true);
 
         try {
-            await login(email, password);
-            navigate('/dashboard');
+            const loggedInUser = await login(email, password);
+            navigate(getDashboardRoute(loggedInUser?.role));
         } catch (err) {
             setError('Invalid email or password');
         } finally {
@@ -170,4 +170,3 @@ const Login = () => {
 };
 
 export default Login;
-

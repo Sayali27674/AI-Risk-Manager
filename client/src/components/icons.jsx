@@ -297,4 +297,108 @@ export function ChatIcon(props) {
   );
 }
 
+export function AlertTriangleIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M10.3 3.9L1.8 18.6a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+      <path d="M12 9v5" />
+      <path d="M12 17.6h.01" />
+    </Icon>
+  );
+}
+
+export function FlagIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M5 21V4" />
+      <path d="M5 4h12l-2 4 2 4H5" />
+    </Icon>
+  );
+}
+
+export function ActivityIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M22 12h-4l-2.5 5-3-10L7 17H3" />
+    </Icon>
+  );
+}
+
+export function ChartIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M3 3v18h18" />
+      <path d="M7 15l4-4 3 3 5-6" />
+    </Icon>
+  );
+}
+
+export function UserIcon(props) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8.5" r="3.75" />
+      <path d="M4.5 20.5c1.4-3.4 4.2-5.2 7.5-5.2s6.1 1.8 7.5 5.2" />
+    </Icon>
+  );
+}
+
+export function AdminIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M12 2l8 4v4c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6l8-4z" />
+      <circle cx="12" cy="11" r="2.2" />
+      <path d="M8 16c1 1.3 2.4 2 4 2s3-.7 4-2" />
+    </Icon>
+  );
+}
+
+export function AnalystIcon(props) {
+  return (
+    <Icon {...props}>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M15.5 15.5L21 21" />
+      <path d="M8 11l2 2 3-4" />
+    </Icon>
+  );
+}
+
+export function RiskIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M12 2L2 22h20L12 2z" />
+      <path d="M12 10v5" />
+      <path d="M12 18h.01" />
+    </Icon>
+  );
+}
+
+export function BrainIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M9 3a3 3 0 00-3 3v1a3 3 0 00-2 5 3 3 0 002 5v1a3 3 0 005 2.2" />
+      <path d="M15 3a3 3 0 013 3v1a3 3 0 012 5 3 3 0 01-2 5v1a3 3 0 01-5 2.2" />
+      <path d="M12 5v14" />
+    </Icon>
+  );
+}
+
+export function SparklesIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" />
+      <path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z" />
+      <path d="M5 15l.7 1.6L7.3 17l-1.6.7L5 19.3l-.7-1.6L2.7 17l1.6-.7L5 15z" />
+    </Icon>
+  );
+}
+
+export function BellIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M6 8a6 6 0 0112 0c0 5 2 6 2 6H4s2-1 2-6z" />
+      <path d="M10.3 19a2 2 0 003.4 0" />
+    </Icon>
+  );
+}
+
 export default Icon;

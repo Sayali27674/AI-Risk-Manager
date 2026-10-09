@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute, useAuth } from '../context/AuthContext';
 import { useAlerts } from '../context/AlertContext';
 import {
+  AdminIcon,
   AlertIcon,
   AnalyticsIcon,
   BehaviorIcon,
@@ -11,13 +12,15 @@ import {
   ProfileIcon,
   ShieldIcon,
   TransactionsIcon,
+  UsersIcon,
   VendorIcon,
 } from './icons';
 
-function NavItem({ to, label, badge, icon: NavIcon }) {
+function NavItem({ to, label, badge, icon: NavIcon, end = false }) {
   return (
     <NavLink
       to={to}
+      end={end}
       className={({ isActive }) =>
         `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
           isActive
@@ -50,11 +53,105 @@ function Group({ title, children }) {
   );
 }
 
+const NAV_BY_ROLE = {
+  ADMIN({ unreadCount }) {
+    return (
+      <>
+        <Group title="Risk Management">
+          <NavItem
+            to="/transactions"
+            label="Transactions"
+            icon={TransactionsIcon}
+          />
+          <NavItem
+            to="/alerts"
+            label="Alerts"
+            badge={unreadCount}
+            icon={AlertIcon}
+          />
+          <NavItem
+            to="/risk-analysis"
+            label="Risk Analysis"
+            icon={AnalyticsIcon}
+          />
+        </Group>
+        <Group title="Administration">
+          <NavItem to="/users" label="Users" icon={UsersIcon} />
+        </Group>
+        <Group title="Intelligence">
+          <NavItem
+            to="/risk-profile"
+            label="Behavioral Risk"
+            icon={BehaviorIcon}
+          />
+          <NavItem
+            to="/investigation"
+            label="AI Investigation"
+            icon={InvestigationIcon}
+          />
+          <NavItem to="/vendors" label="Vendors" icon={VendorIcon} />
+        </Group>
+      </>
+    );
+  },
+  ANALYST({ unreadCount }) {
+    return (
+      <>
+        <Group title="Risk Management">
+          <NavItem
+            to="/transactions"
+            label="Transactions"
+            icon={TransactionsIcon}
+          />
+          <NavItem
+            to="/alerts"
+            label="Alerts"
+            badge={unreadCount}
+            icon={AlertIcon}
+          />
+          <NavItem
+            to="/risk-analysis"
+            label="Risk Analysis"
+            icon={AnalyticsIcon}
+          />
+        </Group>
+        <Group title="Intelligence">
+          <NavItem
+            to="/investigation"
+            label="AI Investigation"
+            icon={InvestigationIcon}
+          />
+        </Group>
+      </>
+    );
+  },
+  USER() {
+    return (
+      <>
+        <Group title="My Risk">
+          <NavItem
+            to="/transactions"
+            label="Transactions"
+            icon={TransactionsIcon}
+          />
+          <NavItem
+            to="/risk-analysis"
+            label="Risk Analysis"
+            icon={AnalyticsIcon}
+          />
+        </Group>
+      </>
+    );
+  },
+};
+
 export default function Sidebar({ onNavigate }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount } = useAlerts() || { unreadCount: 0 };
-  const staff = ['ADMIN', 'ANALYST'].includes(user?.role);
+  const role = user?.role || 'USER';
+  const Nav = NAV_BY_ROLE[role] || NAV_BY_ROLE.USER;
+  const dashboardPath = getDashboardRoute(role);
 
   return (
     <div className="flex h-full flex-col bg-slate-950 text-white">
@@ -64,7 +161,11 @@ export default function Sidebar({ onNavigate }) {
         </span>
         <div className="leading-tight">
           <p className="text-sm font-bold tracking-wide">RiskShield AI</p>
-          <p className="text-[11px] text-slate-400">AI Risk Manager</p>
+          <p className="text-[11px] text-slate-400">
+            {role === 'ADMIN' || role === 'ANALYST'
+              ? `${role} · AI Risk Manager`
+              : 'AI Risk Manager'}
+          </p>
         </div>
       </div>
 
@@ -73,38 +174,14 @@ export default function Sidebar({ onNavigate }) {
         onClick={onNavigate}
       >
         <Group title="Overview">
-          <NavItem to="/dashboard" label="Dashboard" icon={DashboardIcon} />
-        </Group>
-
-        <Group title="Risk Management">
           <NavItem
-            to="/transactions"
-            label="Transactions"
-            icon={TransactionsIcon}
+            to={dashboardPath}
+            label="Dashboard"
+            icon={role === 'ADMIN' ? AdminIcon : DashboardIcon}
+            end
           />
-          {staff && (
-            <NavItem to="/alerts" label="Alerts" badge={unreadCount} icon={AlertIcon} />
-          )}
-          <NavItem to="/risk-analysis" label="Risk Analysis" icon={AnalyticsIcon} />
         </Group>
-
-        <Group title="Intelligence">
-          {staff && (
-            <NavItem
-              to="/risk-profile"
-              label="Behavioral Risk"
-              icon={BehaviorIcon}
-            />
-          )}
-          {staff && (
-            <NavItem
-              to="/investigation"
-              label="AI Investigation"
-              icon={InvestigationIcon}
-            />
-          )}
-          {staff && <NavItem to="/vendors" label="Vendors" icon={VendorIcon} />}
-        </Group>
+        <Nav unreadCount={unreadCount} />
 
         <Group title="Account">
           <NavItem to="/profile" label="Profile" icon={ProfileIcon} />

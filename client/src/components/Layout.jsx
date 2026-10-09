@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { getDashboardRoute, useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import { CloseIcon, LogoutIcon, MenuIcon, ShieldIcon } from './icons';
 
 const PAGE_TITLES = {
+  '/admin/dashboard': 'Admin Dashboard',
+  '/analyst/dashboard': 'Analyst Dashboard',
+  '/users': 'User Management',
   '/dashboard': 'Risk Intelligence Center',
   '/transactions': 'Transactions',
   '/alerts': 'Alerts',
@@ -40,6 +43,7 @@ export default function Layout() {
     (location.pathname.startsWith('/transactions/')
       ? 'Transaction Details'
       : 'RiskShield AI');
+  const dashboardPath = getDashboardRoute(user?.role);
 
   async function handleLogout() {
     await logout();
@@ -58,7 +62,7 @@ export default function Layout() {
           >
             <MenuIcon className="h-5 w-5" />
           </button>
-          <Link to="/dashboard" className="flex min-w-0 items-center gap-2.5">
+          <Link to={dashboardPath} className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-brand-300">
               <ShieldIcon className="h-4.5 w-4.5" />
             </span>

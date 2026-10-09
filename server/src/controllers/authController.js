@@ -26,21 +26,27 @@ function createToken(user) {
   );
 }
 
-function validateCredentials({ name, email, password, confirmPassword }) {
-  if (!name || name.trim().length < 2) {
+const ALLOWED_ROLES = ['ADMIN', 'ANALYST', 'USER'];
+
+function validateCredentials({ name, email, password, confirmPassword, role }) {
+  if (typeof name !== 'string' || name.trim().length < 2) {
     return 'Name must contain at least 2 characters';
   }
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return 'A valid email is required';
   }
 
-  if (!password || password.length < 8) {
+  if (typeof password !== 'string' || password.length < 8) {
     return 'Password must contain at least 8 characters';
   }
 
-  if (password !== confirmPassword) {
+  if (confirmPassword !== undefined && password !== confirmPassword) {
     return 'Passwords do not match';
+  }
+
+  if (role !== undefined && !ALLOWED_ROLES.includes(role)) {
+    return 'Role must be ADMIN, ANALYST, or USER';
   }
 
   return null;
@@ -48,11 +54,17 @@ function validateCredentials({ name, email, password, confirmPassword }) {
 
 async function register(req, res, next) {
   try {
-    const { name, email, password, confirmPassword } = req.body;
-    const validationError = validateCredentials(req.body);
+    const { name, email, password, role } = req.body || {};
+    const validationError = validateCredentials(req.body || {});
 
     if (validationError) {
       return res.status(400).json({ message: validationError });
+    }
+
+    if (role !== undefined && process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({
+        message: 'Role selection is only available in development',
+      });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -71,11 +83,12 @@ async function register(req, res, next) {
         name: name.trim(),
         email: normalizedEmail,
         passwordHash,
-        role: 'USER',
+        role: role ?? 'USER',
       },
     });
 
     return res.status(201).json({
+      success: true,
       user: publicUser(user),
       token: createToken(user),
     });
@@ -88,7 +101,7 @@ async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
       return res.status(400).json({
         message: 'Email and password are required',
       });
@@ -109,6 +122,7 @@ async function login(req, res, next) {
     }
 
     return res.json({
+      success: true,
       user: publicUser(user),
       token: createToken(user),
     });
@@ -127,7 +141,7 @@ async function me(req, res, next) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    return res.json({ user: publicUser(user) });
+    return res.json({ success: true, user: publicUser(user) });
   } catch (error) {
     return next(error);
   }
